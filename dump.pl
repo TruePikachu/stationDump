@@ -183,10 +183,12 @@ foreach $stationID (sort keys %stations) {
 
 sub loadFileInfo {
 	my @catFileList;
+	my $steamdir = 'steamdir';
+	$steamdir = $ARGV[0] if defined $ARGV[0];
 	{
-		opendir STEAMDIR,"steamdir" or die "Can't open steamdir";
+		opendir STEAMDIR,$steamdir or die "\nCan't open steamdir";
 		while(my $file = readdir STEAMDIR) {
-			push @catFileList,"steamdir/$file" if $file =~ /\.cat$/;
+			push @catFileList,"$steamdir/$file" if $file =~ /\.cat$/;
 		}
 	}
 	foreach my $catPath (sort @catFileList) {
