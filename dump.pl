@@ -6,13 +6,13 @@ use FileHandle;
 use Data::Dumper;
 
 print STDERR "Loading wares.xml...";
-my $warexmlref = XMLin("xml/wares.xml",
+my $warexmlref = XMLin("datadir/libraries/wares.xml",
 		ForceArray	=> [qw/ware effect production/],
 		KeyAttr		=> {effect => '+type'}
 	);
 
 print STDERR "\nLoading 0001-L044.xml...";
-my $langref = XMLin("xml/0001-L044.xml",
+my $langref = XMLin("datadir/t/0001-L044.xml",
 		ForceArray	=> [qw /page t/],
 		KeyAttr		=> {page => '+id',
 				    t	 => '+id'}
@@ -56,7 +56,7 @@ foreach my $wareRef (@{$warexmlref->{ware}}) {
 }
 
 print STDERR "\nCollecting production modules...";
-my @prodModuleList = split /\n/,`ls xml/struct_econ_prod_*_macro.xml`;
+my @prodModuleList = split /\n/,`ls datadir/assets/structures/Economy/production/macros/struct_econ_prod_*_macro.xml`;
 my %prodModules;
 foreach my $xmlName (@prodModuleList) {
 	my $ref = XMLin($xmlName,
@@ -82,7 +82,7 @@ foreach my $xmlName (@prodModuleList) {
 }
 
 print STDERR "\nCollecting stations...";
-my @stationXmlList = split /\n/,`ls xml/struct_bt_*_macro.xml`;
+my @stationXmlList = split /\n/,`ls datadir/assets/structures/build_trees/Macros/struct_bt_*_macro.xml`;
 my %stations;
 foreach my $xmlName (@stationXmlList) {
 	my $ref = XMLin($xmlName,
