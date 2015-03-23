@@ -20,3 +20,8 @@ Collecting production modules...................................................
 Collecting stations...............................................................
 $ _
 ```
+If you, however, have the `.cat` and `.dat` files located somewhere else, tell the script:
+```
+$ perl dump.pl /path/to/steamdir/
+```
+The trailing slash is technically optional.

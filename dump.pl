@@ -200,7 +200,15 @@ foreach $stationID (sort @{$CVs{$vesselID}}) {
 ##########
 
 sub loadFileInfo {
-	my @catFileList = split /\n/,`ls steamdir/*.cat`;
+	my @catFileList;
+	my $steamdir = 'steamdir';
+	$steamdir = $ARGV[0] if defined $ARGV[0];
+	{
+		opendir STEAMDIR,$steamdir or die "\nCan't open steamdir";
+		while(my $file = readdir STEAMDIR) {
+			push @catFileList,"$steamdir/$file" if $file =~ /\.cat$/;
+		}
+	}
 	foreach my $catPath (sort @catFileList) {
 		my $datPath = $catPath;
 		$datPath =~ s/cat$/dat/;
