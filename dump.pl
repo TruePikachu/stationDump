@@ -120,13 +120,29 @@ foreach my $xmlName (@stationXmlList) {
 	print STDERR '.';
 }
 
-print STDERR "\n";
+print STDERR "\nCollecting CVs";
+my @cvXmlList = lsDat(qr<assets/props/SurfaceElements/Macros/buildmodule_stations_.*_macro\.xml>);
+my %CVs;
+foreach my $xmlName (@cvXmlList) {
+	my $ref = XMLin(readDat($xmlName),
+		ForceArray	=> [qw /macro/],
+		KeyAttr		=> {}
+		);
+	my $name = $ref->{macro}->[0]->{name};
+	my @stationList;
+	foreach my $stationRef (@{$ref->{macro}->[0]->{properties}->{builder}->{macro}}) {
+		push @stationList, $stationRef->{ref};
+	}
+	$CVs{$name}=\@stationList;
+}
 
-my ($stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiNeed,$multiOptional,$multiOutput,$multiIntermediate,$multiSpecialists);
+##########
+
+my ($vesselID,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiNeed,$multiOptional,$multiOutput,$multiIntermediate,$multiSpecialists);
 
 format LISTALL =
-@*
-$stationID
+@*: @*
+$vesselID, $stationID
 @* Ware Summary (Fully built)
 $stationNameNice
 Specialists: ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -142,7 +158,8 @@ $multiNeed,			    $multiOptional,			$multiIntermediate,		    $multiOutput
 .
 
 format_name STDOUT "LISTALL";
-foreach $stationID (sort keys %stations) {
+foreach $vesselID (sort keys %CVs) {
+foreach $stationID (sort @{$CVs{$vesselID}}) {
 	$stationNameNice = $stations{$stationID}->{name};
 	my %usedWares; # Need Optional Intermediate Produce
 	my %usedSpecialists;
@@ -177,6 +194,7 @@ foreach $stationID (sort keys %stations) {
 	$multiOutput = '(none)' if $multiOutput eq '';
 	$multiSpecialists = join ' ',sort keys %usedSpecialists;
 	write STDOUT;
+}
 }
 
 ##########
