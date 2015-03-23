@@ -5,20 +5,26 @@ use XML::Simple qw(:strict);
 use FileHandle;
 use Data::Dumper;
 
-print STDERR "Loading wares.xml...";
-my $warexmlref = XMLin("datadir/libraries/wares.xml",
+# Load the cat/dat database
+print STDERR "Loading cat/dat database";
+my %fileInfo;
+my %datHandle;
+loadFileInfo();
+
+print STDERR "\nLoading wares.xml...";
+my $warexmlref = XMLin(readDat("libraries/wares.xml"),
 		ForceArray	=> [qw/ware effect production/],
 		KeyAttr		=> {effect => '+type'}
 	);
 
 print STDERR "\nLoading 0001-L044.xml...";
-my $langref = XMLin("datadir/t/0001-L044.xml",
+my $langref = XMLin(readDat("t/0001-L044.xml"),
 		ForceArray	=> [qw /page t/],
 		KeyAttr		=> {page => '+id',
 				    t	 => '+id'}
 	);
 
-print STDERR "\nIndexing wares...";
+print STDERR "\nIndexing wares";
 my %wares;
 foreach my $wareRef (@{$warexmlref->{ware}}) {
 	my %ware;
@@ -53,13 +59,14 @@ foreach my $wareRef (@{$warexmlref->{ware}}) {
 	}
 	$ware{productions}=\%productions;
 	$wares{$ware{id}}=\%ware;
+	print STDERR '.';
 }
 
-print STDERR "\nCollecting production modules...";
-my @prodModuleList = split /\n/,`ls datadir/assets/structures/Economy/production/macros/struct_econ_prod_*_macro.xml`;
+print STDERR "\nCollecting production modules";
+my @prodModuleList = lsDat(qr<assets/structures/Economy/production/macros/struct_econ_prod_.*_macro\.xml>);
 my %prodModules;
 foreach my $xmlName (@prodModuleList) {
-	my $ref = XMLin($xmlName,
+	my $ref = XMLin(readDat($xmlName),
 		ForceArray	=> [qw /item/],
 		KeyAttr		=> {item	=> '+ware'}
 		);
@@ -79,13 +86,14 @@ foreach my $xmlName (@prodModuleList) {
 	}
 	$module{makes}=\%wareMethods;
 	$prodModules{$module{id}}=\%module;
+	print STDERR '.';
 }
 
-print STDERR "\nCollecting stations...";
-my @stationXmlList = split /\n/,`ls datadir/assets/structures/build_trees/Macros/struct_bt_*_macro.xml`;
+print STDERR "\nCollecting stations";
+my @stationXmlList = lsDat(qr<assets/structures/build_trees/Macros/struct_bt_.*_macro\.xml>);
 my %stations;
 foreach my $xmlName (@stationXmlList) {
-	my $ref = XMLin($xmlName,
+	my $ref = XMLin(readDat($xmlName),
 		ForceArray	=> [qw /connection/],
 		KeyAttr		=> {}
 		);
@@ -109,6 +117,7 @@ foreach my $xmlName (@stationXmlList) {
 	}
 	$station{prodModules} = \@prodModules;
 	$stations{$station{id}}=\%station;
+	print STDERR '.';
 }
 
 print STDERR "\n";
@@ -168,6 +177,52 @@ foreach $stationID (sort keys %stations) {
 	$multiOutput = '(none)' if $multiOutput eq '';
 	$multiSpecialists = join ' ',sort keys %usedSpecialists;
 	write STDOUT;
+}
+
+##########
+
+sub loadFileInfo {
+	my @catFileList = split /\n/,`ls steamdir/*.cat`;
+	foreach my $catPath (sort @catFileList) {
+		my $datPath = $catPath;
+		$datPath =~ s/cat$/dat/;
+		open my $handle, "< $datPath";
+		$datHandle{$datPath}=$handle;
+		open CATFILE, "< $catPath";
+		my $datSeek = 0;
+		while(my $parse = <CATFILE>) {
+			chomp $parse;
+			my ($fName,$fSize,$fDate,$fHash) = $parse =~ /^(.*) ([0-9]*) ([0-9]*) ([0-9a-f]{32})$/;
+			my %info = (name => $fName,
+				    size => $fSize,
+				    date => $fDate,
+				    hash => $fHash,
+				    file => $datPath,
+				    seek => $datSeek);
+			$fileInfo{$fName}=\%info;
+			$datSeek += $fSize;
+		}
+		print STDERR '.';
+	}
+}
+
+sub readDat {
+	my $name = shift;
+	die "File $name not found" unless defined $fileInfo{$name};
+	my $handle = $datHandle{$fileInfo{$name}->{file}};
+	seek($handle,$fileInfo{$name}->{seek},0);
+	my $data;
+	read($handle,$data,$fileInfo{$name}->{size});
+	return $data;
+}
+
+sub lsDat {
+	my $pattern = shift;
+	my @result;
+	foreach my $name (keys %fileInfo) {
+		push @result,$name if $name =~ $pattern;
+	}
+	return sort @result;
 }
 
 ##########
