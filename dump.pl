@@ -113,18 +113,21 @@ foreach my $xmlName (@stationXmlList) {
 
 print STDERR "\n";
 
-my ($stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiNeed,$multiOptional,$multiOutput,$multiIntermediate);
+my ($stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiNeed,$multiOptional,$multiOutput,$multiIntermediate,$multiSpecialists);
 
 format LISTALL =
 @*
 $stationID
 @* Ware Summary (Fully built)
 $stationNameNice
+Specialists: ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$multiSpecialists
+~~           ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$multiSpecialists
 @|||||||||||||||||||||||| || @|||||||||||||||||||||||| || @|||||||||||||||||||||||| || @||||||||||||||||||||||||
 "NEED",				    "OPTIONAL",				"INTERMEDIATE",			    "OUTPUT"
 ^|||||||||||||||||||||||| || ^|||||||||||||||||||||||| || ^|||||||||||||||||||||||| || ^|||||||||||||||||||||||| ~~
 $multiNeed,			    $multiOptional,			$multiIntermediate,		    $multiOutput
-
 
 
 .
@@ -133,6 +136,7 @@ format_name STDOUT "LISTALL";
 foreach $stationID (sort keys %stations) {
 	$stationNameNice = $stations{$stationID}->{name};
 	my %usedWares; # Need Optional Intermediate Produce
+	my %usedSpecialists;
 	foreach my $prodModule (@{$stations{$stationID}->{prodModules}}) {
 		my $refProd = $prodModules{$prodModule->{macro}};
 		next unless defined $refProd;
@@ -141,6 +145,9 @@ foreach $stationID (sort keys %stations) {
 			markAll('P',$refWareMaker->{what},\%usedWares);
 			markAll('N',$refWareMaker->{inputs},\%usedWares);
 			markAll('O',$refWareMaker->{secondary},\%usedWares);
+			if(defined $wares{$prodWare}->{specialist}) {
+				$usedSpecialists{$wares{$prodWare}->{specialist}}=1 unless $wares{$prodWare}->{specialist} eq '(none)';
+			}
 		}
 	}
 	next unless scalar keys %usedWares;
@@ -159,6 +166,7 @@ foreach $stationID (sort keys %stations) {
 	$multiOptional = '(none)' if $multiOptional eq '';
 	$multiIntermediate = '(none)' if $multiIntermediate eq '';
 	$multiOutput = '(none)' if $multiOutput eq '';
+	$multiSpecialists = join ' ',sort keys %usedSpecialists;
 	write STDOUT;
 }
 
