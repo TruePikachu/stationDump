@@ -72,8 +72,6 @@ my ($vesselID,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNi
 format LISTALL =
 @*:
 $vesselID
-  @*
-  $stationID
 @|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 $stationNameNice." Ware Summary (Fully Built)"
 Specialists: ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
