@@ -58,7 +58,7 @@ foreach my $xmlName (@cvXmlList) {
 	my $name = $ref->{macro}->[0]->{name};
 	my @stationList;
 	foreach my $stationRef (@{$ref->{macro}->[0]->{properties}->{builder}->{macro}}) {
-		push @stationList, $stationRef->{ref};
+		push @stationList, $stations{$stationRef->{ref}};
 	}
 	$CVs{$name}=\@stationList;
 }
@@ -86,11 +86,12 @@ $multiNeed,			    $multiOptional,			$multiIntermediate,		    $multiOutput
 
 format_name STDOUT "LISTALL";
 foreach $vesselID (sort keys %CVs) {
-foreach $stationID (sort @{$CVs{$vesselID}}) {
-	$stationNameNice = $stations{$stationID}->name;
+foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
+	$stationID = $station->id;
+	$stationNameNice = $station->name;
 	my %usedWares; # Need Optional Intermediate Produce
 	my %usedSpecialists;
-	foreach my $prodModule (@{$stations{$stationID}->prodModuleNames}) {
+	foreach my $prodModule (@{$station->prodModuleNames}) {
 		my $refProd = $prodModules{$prodModule->{macro}};
 		next unless defined $refProd;
 		foreach my $prodWare (keys %{$refProd->methods}) {
