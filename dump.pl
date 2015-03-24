@@ -66,36 +66,36 @@ print STDERR "\n";
 
 ##########
 
-my ($vesselID,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiNeed,$multiOptional,$multiOutput,$multiIntermediate,$multiSpecialists);
+my ($vesselID,$vesselIDnice,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiNeed,$multiOptional,$multiOutput,$multiIntermediate,$multiSpecialists);
 
 ################################################################################
 format LISTALL =
-@*:
-$vesselID
 @|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-$stationNameNice." Ware Summary (Fully Built)"
+$stationNameNice." Ware Summary (Fully Built) (".$vesselIDnice.")"
 Specialists: ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 $multiSpecialists
 ~~           ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 $multiSpecialists
 ..=====================================..=====================================..
 || @|||||||||||||||||||||||||||||||||| || @|||||||||||||||||||||||||||||||||| ||
-   "INPUT",				  "OUTPUT"
+   "INPUT",                               "OUTPUT"
 ||-------------------------------------++-------------------------------------||
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
-   $multiNeed,				  $multiOutput
+   $multiNeed,                            $multiOutput
 ||=====================================##=====================================||
 || @|||||||||||||||||||||||||||||||||| || @|||||||||||||||||||||||||||||||||| ||
-   "OPTIONAL",				  "INTERMEDIATE"
+   "OPTIONAL",                            "INTERMEDIATE"
 ||-------------------------------------++-------------------------------------||
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
-   $multiOptional,			  $multiIntermediate
+   $multiOptional,                        $multiIntermediate
 ''=====================================''=====================================''
 
 .
 
 format_name STDOUT "LISTALL";
 foreach $vesselID (sort keys %CVs) {
+	$vesselIDnice=$vesselID;
+	$vesselIDnice =~ s/^buildmodule_stations_(.*)_macro$/$1/;
 foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 	$stationID = $station->id;
 	$stationNameNice = $station->name;
