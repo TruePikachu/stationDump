@@ -8,6 +8,7 @@ use CatDatDB;
 use XStringTable;
 use Ware;
 use Production;
+use Station;
 
 print STDERR "Loading cat/dat database...";
 CatDatDB::loadDB($ARGV[0]);
@@ -38,35 +39,12 @@ foreach my $xmlName (CatDatDB::find(qr<assets/structures/Economy/production/macr
 	$prodModules{$newProduction->id}=$newProduction;
 }
 
-print STDERR "\nCollecting stations";
+print STDERR "\nCollecting stations...";
 my @stationXmlList = CatDatDB::find(qr<assets/structures/build_trees/Macros/struct_bt_.*_macro\.xml>);
 my %stations;
 foreach my $xmlName (@stationXmlList) {
-	my $ref = XMLin(CatDatDB::read($xmlName),
-		ForceArray	=> [qw /connection/],
-		KeyAttr		=> {}
-		);
-	my $stationRef = $ref->{macro};
-	my %station;
-	$station{id}=$stationRef->{name};
-	$station{name}=XStringTable::expand($stationRef->{properties}->{identification}->{name});
-	my @prodModules;
-	foreach my $connection (@{$stationRef->{connections}->{connection}}) {
-		next unless defined $connection->{macro};
-		next unless defined $connection->{macro}->{ref};
-		next unless ($connection->{macro}->{ref} =~ /struct_econ_prod_.*_macro/);
-		my %module;
-		$module{macro}=$connection->{macro}->{ref};
-		if(defined $connection->{build}) {
-			$module{build}=$connection->{build}->{sequence} . '-' . $connection->{build}->{stage};
-		} else {
-			$module{build} = "N/A";
-		}
-		push @prodModules, \%module;
-	}
-	$station{prodModules} = \@prodModules;
-	$stations{$station{id}}=\%station;
-	print STDERR '.';
+	my $newStation = new Station($xmlName);
+	$stations{$newStation->id}=$newStation;
 }
 
 print STDERR "\nCollecting CVs";
@@ -109,10 +87,10 @@ $multiNeed,			    $multiOptional,			$multiIntermediate,		    $multiOutput
 format_name STDOUT "LISTALL";
 foreach $vesselID (sort keys %CVs) {
 foreach $stationID (sort @{$CVs{$vesselID}}) {
-	$stationNameNice = $stations{$stationID}->{name};
+	$stationNameNice = $stations{$stationID}->name;
 	my %usedWares; # Need Optional Intermediate Produce
 	my %usedSpecialists;
-	foreach my $prodModule (@{$stations{$stationID}->{prodModules}}) {
+	foreach my $prodModule (@{$stations{$stationID}->prodModuleNames}) {
 		my $refProd = $prodModules{$prodModule->{macro}};
 		next unless defined $refProd;
 		foreach my $prodWare (keys %{$refProd->methods}) {
