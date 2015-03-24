@@ -25,6 +25,7 @@ sub new {
 		volume		=> $ref->{volume},
 		size		=> $ref->{size},
 	};
+	$self->{specialist} =~ s/^specialist// if defined $self->{specialist};
 	my %productions;
 	foreach my $prodRef (@{$ref->{production}}) {
 		my %production;
