@@ -4,134 +4,61 @@ use strict;
 use XML::Simple qw(:strict);
 use FileHandle;
 use Data::Dumper;
+use CatDatDB;
+use XStringTable;
+use Ware;
+use Production;
+use Station;
 
-# Load the cat/dat database
-print STDERR "Loading cat/dat database";
-my %fileInfo;
-my %datHandle;
-loadFileInfo();
-
-print STDERR "\nLoading wares.xml...";
-my $warexmlref = XMLin(readDat("libraries/wares.xml"),
-		ForceArray	=> [qw/ware effect production/],
-		KeyAttr		=> {effect => '+type'}
-	);
-
-print STDERR "\nLoading 0001-L044.xml...";
-my $langref = XMLin(readDat("t/0001-L044.xml"),
-		ForceArray	=> [qw /page t/],
-		KeyAttr		=> {page => '+id',
-				    t	 => '+id'}
-	);
-
-print STDERR "\nIndexing wares";
+print STDERR "Loading cat/dat database...";
+CatDatDB::loadDB($ARGV[0]);
+print STDERR "\nLoading string table...";
+XStringTable::init();
+print STDERR "\nLoading wares...";
 my %wares;
-foreach my $wareRef (@{$warexmlref->{ware}}) {
-	my %ware;
-	$ware{id} = $wareRef->{id};
-	$ware{name}=wareString($wareRef->{name});
-	($ware{specialist})=$wareRef->{specialist} =~ /specialist(.*)/ if defined $wareRef->{specialist};
-	$ware{specialist}='(none)' unless defined $ware{specialist};
-	$ware{volume}=$wareRef->{volume};
-	$ware{price}=$wareRef->{price}->{average};
-	$ware{transport}=$wareRef->{transport};
-	next if $ware{transport} eq 'ship';
+foreach my $wareRef (@{Ware::refList()}) {
+	# TODO Reduce these matches
+	# Don't want to regex golf for anything
 	next unless defined $wareRef->{tags};
 	next unless $wareRef->{tags} =~ /economy/;
-	my %productions;
-	foreach my $prodRef (@{$wareRef->{production}}) {
-		my %production;
-		$production{time}=$prodRef->{time};
-		my %outputs;
-		$outputs{$ware{id}} = $prodRef->{amount};
-		$production{what}=\%outputs;
-		my %inputs;
-		foreach my $input (@{$prodRef->{primary}->{ware}}) {
-			$inputs{$input->{ware}}=$input->{amount};
-		}
-		$production{inputs}=\%inputs;
-		my %secondary;
-		foreach my $second (@{$prodRef->{secondary}->{ware}}) {
-			$secondary{$second->{ware}}=$second->{amount};
-		}
-		$production{secondary}=\%secondary;
-		$productions{$prodRef->{method}}=\%production;
-	}
-	$ware{productions}=\%productions;
-	$wares{$ware{id}}=\%ware;
-	print STDERR '.';
+	next if $wareRef->{id} =~ /^inv_/;
+	next if $wareRef->{id} =~ /^shp_/;
+	next if $wareRef->{id} =~ /^spe_/;
+	next if $wareRef->{id} =~ /^stp_/;
+	next if $wareRef->{id} =~ /^ecotest_/;
+	next if $wareRef->{id} =~ /^upg_/;
+	my $newWare = new Ware($wareRef);
+	$wares{$newWare->id} = $newWare;
 }
 
-print STDERR "\nCollecting production modules";
-my @prodModuleList = lsDat(qr<assets/structures/Economy/production/macros/struct_econ_prod_.*_macro\.xml>);
+print STDERR "\nLoading production modules...";
 my %prodModules;
-foreach my $xmlName (@prodModuleList) {
-	my $ref = XMLin(readDat($xmlName),
-		ForceArray	=> [qw /item/],
-		KeyAttr		=> {item	=> '+ware'}
-		);
-	my %module;
-	$module{id}=$ref->{macro}->{name};
-	next unless defined $ref->{macro}->{properties}->{identification}->{name};
-	$module{name}=string($ref->{macro}->{properties}->{identification}->{name});
-	next unless defined $ref->{macro}->{properties}->{production}->{wares};
-	my @waresMade = split / /,$ref->{macro}->{properties}->{production}->{wares};
-	my %wareMethods;
-	foreach my $ware (@waresMade) {
-		if(defined $ref->{macro}->{properties}->{production}->{queue}->{item}->{$ware}->{method}) {
-			$wareMethods{$ware}=$ref->{macro}->{properties}->{production}->{queue}->{item}->{$ware}->{method};
-		} else {
-			$wareMethods{$ware}='default';
-		}
-	}
-	$module{makes}=\%wareMethods;
-	$prodModules{$module{id}}=\%module;
-	print STDERR '.';
+foreach my $xmlName (CatDatDB::find(qr<assets/structures/Economy/production/macros/struct_econ_prod_.*_macro\.xml>)) {
+	my $newProduction = new Production($xmlName);
+	next unless defined $newProduction->name;
+	$prodModules{$newProduction->id}=$newProduction;
 }
 
-print STDERR "\nCollecting stations";
-my @stationXmlList = lsDat(qr<assets/structures/build_trees/Macros/struct_bt_.*_macro\.xml>);
+print STDERR "\nCollecting stations...";
+my @stationXmlList = CatDatDB::find(qr<assets/structures/build_trees/Macros/struct_bt_.*_macro\.xml>);
 my %stations;
 foreach my $xmlName (@stationXmlList) {
-	my $ref = XMLin(readDat($xmlName),
-		ForceArray	=> [qw /connection/],
-		KeyAttr		=> {}
-		);
-	my $stationRef = $ref->{macro};
-	my %station;
-	$station{id}=$stationRef->{name};
-	$station{name}=string($stationRef->{properties}->{identification}->{name});
-	my @prodModules;
-	foreach my $connection (@{$stationRef->{connections}->{connection}}) {
-		next unless defined $connection->{macro};
-		next unless defined $connection->{macro}->{ref};
-		next unless ($connection->{macro}->{ref} =~ /struct_econ_prod_.*_macro/);
-		my %module;
-		$module{macro}=$connection->{macro}->{ref};
-		if(defined $connection->{build}) {
-			$module{build}=$connection->{build}->{sequence} . '-' . $connection->{build}->{stage};
-		} else {
-			$module{build} = "N/A";
-		}
-		push @prodModules, \%module;
-	}
-	$station{prodModules} = \@prodModules;
-	$stations{$station{id}}=\%station;
-	print STDERR '.';
+	my $newStation = new Station($xmlName);
+	$stations{$newStation->id}=$newStation;
 }
 
 print STDERR "\nCollecting CVs";
-my @cvXmlList = lsDat(qr<assets/props/SurfaceElements/Macros/buildmodule_stations_.*_macro\.xml>);
+my @cvXmlList = CatDatDB::find(qr<assets/props/SurfaceElements/Macros/buildmodule_stations_.*_macro\.xml>);
 my %CVs;
 foreach my $xmlName (@cvXmlList) {
-	my $ref = XMLin(readDat($xmlName),
+	my $ref = XMLin(CatDatDB::read($xmlName),
 		ForceArray	=> [qw /macro/],
 		KeyAttr		=> {}
 		);
 	my $name = $ref->{macro}->[0]->{name};
 	my @stationList;
 	foreach my $stationRef (@{$ref->{macro}->[0]->{properties}->{builder}->{macro}}) {
-		push @stationList, $stationRef->{ref};
+		push @stationList, $stations{$stationRef->{ref}};
 	}
 	$CVs{$name}=\@stationList;
 }
@@ -171,30 +98,31 @@ $multiSpecialists
 
 format_name STDOUT "LISTALL";
 foreach $vesselID (sort keys %CVs) {
-foreach $stationID (sort @{$CVs{$vesselID}}) {
-	$stationNameNice = $stations{$stationID}->{name};
+foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
+	$stationID = $station->id;
+	$stationNameNice = $station->name;
 	my %usedWares; # Need Optional Intermediate Produce
 	my %usedSpecialists;
-	foreach my $prodModule (@{$stations{$stationID}->{prodModules}}) {
+	foreach my $prodModule (@{$station->prodModuleNames}) {
 		my $refProd = $prodModules{$prodModule->{macro}};
 		next unless defined $refProd;
-		foreach my $prodWare (keys %{$refProd->{makes}}) {
-			my $refWareMaker = $wares{$prodWare}->{productions}->{$refProd->{makes}->{$prodWare}};
+		foreach my $prodWare (keys %{$refProd->methods}) {
+			my $refWareMaker = $wares{$prodWare}->productions->{$refProd->methods->{$prodWare}};
 			markAll('P',$refWareMaker->{what},\%usedWares);
 			markAll('N',$refWareMaker->{inputs},\%usedWares);
 			markAll('O',$refWareMaker->{secondary},\%usedWares);
-			if(defined $wares{$prodWare}->{specialist}) {
-				$usedSpecialists{$wares{$prodWare}->{specialist}}=1 unless $wares{$prodWare}->{specialist} eq '(none)';
+			if(defined $wares{$prodWare}->specialist) {
+				$usedSpecialists{$wares{$prodWare}->specialist}=1;
 			}
 		}
 	}
 	next unless scalar keys %usedWares;
 	my (@need,@optional,@intermediate,@output);
 	foreach my $ware (sort keys %usedWares) {
-		push @need,$wares{$ware}->{name} if $usedWares{$ware} eq 'N';
-		push @optional,$wares{$ware}->{name} if $usedWares{$ware} eq 'O';
-		push @intermediate,$wares{$ware}->{name} if $usedWares{$ware} eq 'I';
-		push @output,$wares{$ware}->{name} if $usedWares{$ware} eq 'P';
+		push @need,$wares{$ware}->name if $usedWares{$ware} eq 'N';
+		push @optional,$wares{$ware}->name if $usedWares{$ware} eq 'O';
+		push @intermediate,$wares{$ware}->name if $usedWares{$ware} eq 'I';
+		push @output,$wares{$ware}->name if $usedWares{$ware} eq 'P';
 	}
 	$multiNeed = join "\r",sort @need;
 	$multiOptional = join "\r",sort @optional;
@@ -211,81 +139,11 @@ foreach $stationID (sort @{$CVs{$vesselID}}) {
 
 ##########
 
-sub loadFileInfo {
-	my @catFileList;
-	my $steamdir = 'steamdir';
-	$steamdir = $ARGV[0] if defined $ARGV[0];
-	{
-		opendir STEAMDIR,$steamdir or die "\nCan't open steamdir";
-		while(my $file = readdir STEAMDIR) {
-			push @catFileList,"$steamdir/$file" if $file =~ /\.cat$/;
-		}
-	}
-	foreach my $catPath (sort @catFileList) {
-		my $datPath = $catPath;
-		$datPath =~ s/cat$/dat/;
-		open my $handle, "< $datPath";
-		$datHandle{$datPath}=$handle;
-		open CATFILE, "< $catPath";
-		my $datSeek = 0;
-		while(my $parse = <CATFILE>) {
-			chomp $parse;
-			my ($fName,$fSize,$fDate,$fHash) = $parse =~ /^(.*) ([0-9]*) ([0-9]*) ([0-9a-f]{32})$/;
-			my %info = (name => $fName,
-				    size => $fSize,
-				    date => $fDate,
-				    hash => $fHash,
-				    file => $datPath,
-				    seek => $datSeek);
-			$fileInfo{$fName}=\%info;
-			$datSeek += $fSize;
-		}
-		print STDERR '.';
-	}
-}
-
-sub readDat {
-	my $name = shift;
-	die "File $name not found" unless defined $fileInfo{$name};
-	my $handle = $datHandle{$fileInfo{$name}->{file}};
-	seek($handle,$fileInfo{$name}->{seek},0);
-	my $data;
-	read($handle,$data,$fileInfo{$name}->{size});
-	return $data;
-}
-
-sub lsDat {
-	my $pattern = shift;
-	my @result;
-	foreach my $name (keys %fileInfo) {
-		push @result,$name if $name =~ $pattern;
-	}
-	return sort @result;
-}
-
-##########
-
-sub wareString {
-	my $ref = string(shift);
-	if($ref =~ /{.*} {.*}/) {
-		my ($name,$mark) = split / /,$ref;
-		$ref = string($name) . ' ' . string($mark);
-	}
-	return $ref;
-}
-
-sub string {
-	my $ref = shift;
-	my ($page,$id) = $ref =~ /{([0-9]*),([0-9]*)}/;
-	return $ref unless defined $id;
-	return $langref->{page}->{$page}->{t}->{$id}->{content};
-}
-
 sub multiWare {
 	my $ref = shift;
 	my $result = '';
 	foreach my $ware (sort keys %{$ref}) {
-		$result .= $ref->{$ware}." x ".$wares{$ware}->{name} . "\r";
+		$result .= $ref->{$ware}." x ".$wares{$ware}->name . "\r";
 	}
 	chomp $result;
 	if($result eq '') {
