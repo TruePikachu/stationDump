@@ -11,7 +11,14 @@ use Production;
 use Station;
 
 print STDERR "Loading cat/dat database...";
-CatDatDB::loadDB($ARGV[0]);
+if(scalar @ARGV) {
+	foreach my $steamdir (@ARGV) {
+		CatDatDB::loadDB($steamdir);
+	}
+} else {
+	CatDatDB::loadDB('steamdir');
+}
+
 print STDERR "\nLoading string table...";
 XStringTable::init();
 print STDERR "\nLoading wares...";
