@@ -5,10 +5,12 @@ use XML::Simple qw(:strict);
 use FileHandle;
 use Data::Dumper;
 use CatDatDB;
+use XStringTable;
 
-# Load the cat/dat database
 print STDERR "Loading cat/dat database...";
 CatDatDB::loadDB($ARGV[0]);
+print STDERR "\nLoading string table...";
+XStringTable::init();
 
 print STDERR "\nLoading wares.xml...";
 my $warexmlref = XMLin(CatDatDB::read("libraries/wares.xml"),
@@ -16,19 +18,13 @@ my $warexmlref = XMLin(CatDatDB::read("libraries/wares.xml"),
 		KeyAttr		=> {effect => '+type'}
 	);
 
-print STDERR "\nLoading 0001-L044.xml...";
-my $langref = XMLin(CatDatDB::read("t/0001-L044.xml"),
-		ForceArray	=> [qw /page t/],
-		KeyAttr		=> {page => '+id',
-				    t	 => '+id'}
-	);
-
+my $langref;
 print STDERR "\nIndexing wares";
 my %wares;
 foreach my $wareRef (@{$warexmlref->{ware}}) {
 	my %ware;
 	$ware{id} = $wareRef->{id};
-	$ware{name}=wareString($wareRef->{name});
+	$ware{name}=XStringTable::expand($wareRef->{name});
 	($ware{specialist})=$wareRef->{specialist} =~ /specialist(.*)/ if defined $wareRef->{specialist};
 	$ware{specialist}='(none)' unless defined $ware{specialist};
 	$ware{volume}=$wareRef->{volume};
@@ -72,7 +68,7 @@ foreach my $xmlName (@prodModuleList) {
 	my %module;
 	$module{id}=$ref->{macro}->{name};
 	next unless defined $ref->{macro}->{properties}->{identification}->{name};
-	$module{name}=string($ref->{macro}->{properties}->{identification}->{name});
+	$module{name}=XStringTable::expand($ref->{macro}->{properties}->{identification}->{name});
 	next unless defined $ref->{macro}->{properties}->{production}->{wares};
 	my @waresMade = split / /,$ref->{macro}->{properties}->{production}->{wares};
 	my %wareMethods;
@@ -99,7 +95,7 @@ foreach my $xmlName (@stationXmlList) {
 	my $stationRef = $ref->{macro};
 	my %station;
 	$station{id}=$stationRef->{name};
-	$station{name}=string($stationRef->{properties}->{identification}->{name});
+	$station{name}=XStringTable::expand($stationRef->{properties}->{identification}->{name});
 	my @prodModules;
 	foreach my $connection (@{$stationRef->{connections}->{connection}}) {
 		next unless defined $connection->{macro};
@@ -197,22 +193,6 @@ foreach $stationID (sort @{$CVs{$vesselID}}) {
 }
 
 ##########
-
-sub wareString {
-	my $ref = string(shift);
-	if($ref =~ /{.*} {.*}/) {
-		my ($name,$mark) = split / /,$ref;
-		$ref = string($name) . ' ' . string($mark);
-	}
-	return $ref;
-}
-
-sub string {
-	my $ref = shift;
-	my ($page,$id) = $ref =~ /{([0-9]*),([0-9]*)}/;
-	return $ref unless defined $id;
-	return $langref->{page}->{$page}->{t}->{$id}->{content};
-}
 
 sub multiWare {
 	my $ref = shift;
