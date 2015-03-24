@@ -6,55 +6,27 @@ use FileHandle;
 use Data::Dumper;
 use CatDatDB;
 use XStringTable;
+use Ware;
 
 print STDERR "Loading cat/dat database...";
 CatDatDB::loadDB($ARGV[0]);
 print STDERR "\nLoading string table...";
 XStringTable::init();
-
-print STDERR "\nLoading wares.xml...";
-my $warexmlref = XMLin(CatDatDB::read("libraries/wares.xml"),
-		ForceArray	=> [qw/ware effect production/],
-		KeyAttr		=> {effect => '+type'}
-	);
-
-my $langref;
-print STDERR "\nIndexing wares";
+print STDERR "\nLoading wares...";
 my %wares;
-foreach my $wareRef (@{$warexmlref->{ware}}) {
-	my %ware;
-	$ware{id} = $wareRef->{id};
-	$ware{name}=XStringTable::expand($wareRef->{name});
-	($ware{specialist})=$wareRef->{specialist} =~ /specialist(.*)/ if defined $wareRef->{specialist};
-	$ware{specialist}='(none)' unless defined $ware{specialist};
-	$ware{volume}=$wareRef->{volume};
-	$ware{price}=$wareRef->{price}->{average};
-	$ware{transport}=$wareRef->{transport};
-	next if $ware{transport} eq 'ship';
+foreach my $wareRef (@{Ware::refList()}) {
+	# TODO Reduce these matches
+	# Don't want to regex golf for anything
 	next unless defined $wareRef->{tags};
 	next unless $wareRef->{tags} =~ /economy/;
-	my %productions;
-	foreach my $prodRef (@{$wareRef->{production}}) {
-		my %production;
-		$production{time}=$prodRef->{time};
-		my %outputs;
-		$outputs{$ware{id}} = $prodRef->{amount};
-		$production{what}=\%outputs;
-		my %inputs;
-		foreach my $input (@{$prodRef->{primary}->{ware}}) {
-			$inputs{$input->{ware}}=$input->{amount};
-		}
-		$production{inputs}=\%inputs;
-		my %secondary;
-		foreach my $second (@{$prodRef->{secondary}->{ware}}) {
-			$secondary{$second->{ware}}=$second->{amount};
-		}
-		$production{secondary}=\%secondary;
-		$productions{$prodRef->{method}}=\%production;
-	}
-	$ware{productions}=\%productions;
-	$wares{$ware{id}}=\%ware;
-	print STDERR '.';
+	next if $wareRef->{id} =~ /^inv_/;
+	next if $wareRef->{id} =~ /^shp_/;
+	next if $wareRef->{id} =~ /^spe_/;
+	next if $wareRef->{id} =~ /^stp_/;
+	next if $wareRef->{id} =~ /^ecotest_/;
+	next if $wareRef->{id} =~ /^upg_/;
+	my $newWare = new Ware($wareRef);
+	$wares{$newWare->id} = $newWare;
 }
 
 print STDERR "\nCollecting production modules";
@@ -162,22 +134,22 @@ foreach $stationID (sort @{$CVs{$vesselID}}) {
 		my $refProd = $prodModules{$prodModule->{macro}};
 		next unless defined $refProd;
 		foreach my $prodWare (keys %{$refProd->{makes}}) {
-			my $refWareMaker = $wares{$prodWare}->{productions}->{$refProd->{makes}->{$prodWare}};
+			my $refWareMaker = $wares{$prodWare}->productions->{$refProd->{makes}->{$prodWare}};
 			markAll('P',$refWareMaker->{what},\%usedWares);
 			markAll('N',$refWareMaker->{inputs},\%usedWares);
 			markAll('O',$refWareMaker->{secondary},\%usedWares);
-			if(defined $wares{$prodWare}->{specialist}) {
-				$usedSpecialists{$wares{$prodWare}->{specialist}}=1 unless $wares{$prodWare}->{specialist} eq '(none)';
+			if(defined $wares{$prodWare}->specialist) {
+				$usedSpecialists{$wares{$prodWare}->specialist}=1;
 			}
 		}
 	}
 	next unless scalar keys %usedWares;
 	my (@need,@optional,@intermediate,@output);
 	foreach my $ware (sort keys %usedWares) {
-		push @need,$wares{$ware}->{name} if $usedWares{$ware} eq 'N';
-		push @optional,$wares{$ware}->{name} if $usedWares{$ware} eq 'O';
-		push @intermediate,$wares{$ware}->{name} if $usedWares{$ware} eq 'I';
-		push @output,$wares{$ware}->{name} if $usedWares{$ware} eq 'P';
+		push @need,$wares{$ware}->name if $usedWares{$ware} eq 'N';
+		push @optional,$wares{$ware}->name if $usedWares{$ware} eq 'O';
+		push @intermediate,$wares{$ware}->name if $usedWares{$ware} eq 'I';
+		push @output,$wares{$ware}->name if $usedWares{$ware} eq 'P';
 	}
 	$multiNeed = join "\r",sort @need;
 	$multiOptional = join "\r",sort @optional;
@@ -198,7 +170,7 @@ sub multiWare {
 	my $ref = shift;
 	my $result = '';
 	foreach my $ware (sort keys %{$ref}) {
-		$result .= $ref->{$ware}." x ".$wares{$ware}->{name} . "\r";
+		$result .= $ref->{$ware}." x ".$wares{$ware}->name . "\r";
 	}
 	chomp $result;
 	if($result eq '') {
