@@ -135,6 +135,7 @@ foreach my $xmlName (@cvXmlList) {
 	}
 	$CVs{$name}=\@stationList;
 }
+print STDERR "\n";
 
 ##########
 
