@@ -7,6 +7,7 @@ use Data::Dumper;
 use CatDatDB;
 use XStringTable;
 use Ware;
+use Production;
 
 print STDERR "Loading cat/dat database...";
 CatDatDB::loadDB($ARGV[0]);
@@ -29,31 +30,12 @@ foreach my $wareRef (@{Ware::refList()}) {
 	$wares{$newWare->id} = $newWare;
 }
 
-print STDERR "\nCollecting production modules";
-my @prodModuleList = CatDatDB::find(qr<assets/structures/Economy/production/macros/struct_econ_prod_.*_macro\.xml>);
+print STDERR "\nLoading production modules...";
 my %prodModules;
-foreach my $xmlName (@prodModuleList) {
-	my $ref = XMLin(CatDatDB::read($xmlName),
-		ForceArray	=> [qw /item/],
-		KeyAttr		=> {item	=> '+ware'}
-		);
-	my %module;
-	$module{id}=$ref->{macro}->{name};
-	next unless defined $ref->{macro}->{properties}->{identification}->{name};
-	$module{name}=XStringTable::expand($ref->{macro}->{properties}->{identification}->{name});
-	next unless defined $ref->{macro}->{properties}->{production}->{wares};
-	my @waresMade = split / /,$ref->{macro}->{properties}->{production}->{wares};
-	my %wareMethods;
-	foreach my $ware (@waresMade) {
-		if(defined $ref->{macro}->{properties}->{production}->{queue}->{item}->{$ware}->{method}) {
-			$wareMethods{$ware}=$ref->{macro}->{properties}->{production}->{queue}->{item}->{$ware}->{method};
-		} else {
-			$wareMethods{$ware}='default';
-		}
-	}
-	$module{makes}=\%wareMethods;
-	$prodModules{$module{id}}=\%module;
-	print STDERR '.';
+foreach my $xmlName (CatDatDB::find(qr<assets/structures/Economy/production/macros/struct_econ_prod_.*_macro\.xml>)) {
+	my $newProduction = new Production($xmlName);
+	next unless defined $newProduction->name;
+	$prodModules{$newProduction->id}=$newProduction;
 }
 
 print STDERR "\nCollecting stations";
@@ -133,8 +115,8 @@ foreach $stationID (sort @{$CVs{$vesselID}}) {
 	foreach my $prodModule (@{$stations{$stationID}->{prodModules}}) {
 		my $refProd = $prodModules{$prodModule->{macro}};
 		next unless defined $refProd;
-		foreach my $prodWare (keys %{$refProd->{makes}}) {
-			my $refWareMaker = $wares{$prodWare}->productions->{$refProd->{makes}->{$prodWare}};
+		foreach my $prodWare (keys %{$refProd->methods}) {
+			my $refWareMaker = $wares{$prodWare}->productions->{$refProd->methods->{$prodWare}};
 			markAll('P',$refWareMaker->{what},\%usedWares);
 			markAll('N',$refWareMaker->{inputs},\%usedWares);
 			markAll('O',$refWareMaker->{secondary},\%usedWares);
