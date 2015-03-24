@@ -66,7 +66,7 @@ print STDERR "\n";
 
 ##########
 
-my ($vesselID,$vesselIDnice,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiNeed,$multiOptional,$multiOutput,$multiIntermediate,$multiSpecialists);
+my ($vesselID,$vesselIDnice,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiFrameA,$multiFrameC,$multiFrameB,$multiFrameD,$multiSpecialists,$multiTitleA,$multiTitleB,$multiTitleC,$multiTitleD);
 
 ################################################################################
 format LISTALL =
@@ -76,18 +76,15 @@ Specialists: ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 $multiSpecialists
 ~~           ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 $multiSpecialists
-..=====================================..=====================================..
-|| @|||||||||||||||||||||||||||||||||| || @|||||||||||||||||||||||||||||||||| ||
-   "INPUT",                               "OUTPUT"
-||-------------------------------------++-------------------------------------||
+..==========[@||||||||||||||]==========..==========[@||||||||||||||]==========..
+             $multiTitleA,			    $multiTitleB
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
-   $multiNeed,                            $multiOutput
-||=====================================##=====================================||
-|| @|||||||||||||||||||||||||||||||||| || @|||||||||||||||||||||||||||||||||| ||
-   "OPTIONAL",                            "INTERMEDIATE"
-||-------------------------------------++-------------------------------------||
+   $multiFrameA,                          $multiFrameB
+||                                     ||                                     ||
+||==========[@||||||||||||||]==========##==========[@||||||||||||||]==========|| ~
+	     $multiTitleC,			    $multiTitleD
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
-   $multiOptional,                        $multiIntermediate
+   $multiFrameC,                          $multiFrameD
 ''=====================================''=====================================''
 
 .
@@ -122,14 +119,18 @@ foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 		push @intermediate,$wares{$ware}->name if $usedWares{$ware} eq 'I';
 		push @output,$wares{$ware}->name if $usedWares{$ware} eq 'P';
 	}
-	$multiNeed = join "\r",sort @need;
-	$multiOptional = join "\r",sort @optional;
-	$multiIntermediate = join "\r",sort @intermediate;
-	$multiOutput = join "\r",sort @output;
-	$multiNeed = '(none)' if $multiNeed eq '';
-	$multiOptional = '(none)' if $multiOptional eq '';
-	$multiIntermediate = '(none)' if $multiIntermediate eq '';
-	$multiOutput = '(none)' if $multiOutput eq '';
+	$multiFrameA = join "\r",sort @need;
+	$multiFrameB = join "\r",sort @output;
+	$multiFrameC = join "\r",sort @optional;
+	$multiFrameD = join "\r",sort @intermediate;
+	$multiFrameA = '(none)' if $multiFrameA eq '';
+	$multiFrameB = '(none)' if $multiFrameB eq '';
+	$multiFrameC = '(none)' if $multiFrameC eq '';
+	$multiFrameD = '(none)' if $multiFrameD eq '';
+	$multiTitleA = 'INPUTS';
+	$multiTitleB = 'OUTPUTS';
+	$multiTitleC = 'OPTIONAL';
+	$multiTitleD = 'INTERMEDIATE';
 	$multiSpecialists = join ' ',sort keys %usedSpecialists;
 	write STDOUT;
 }
