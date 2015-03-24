@@ -29,6 +29,7 @@ sub lookup {
 
 sub expand {
 	my $what = shift;
+	return $what unless defined $what;
 	for(;;) {
 		# Search for any reference IDs in the string
 		my ($page,$entry) = $what =~ /\{([0-9]*), *([0-9]*)\}/p;
