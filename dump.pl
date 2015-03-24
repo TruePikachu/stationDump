@@ -73,7 +73,7 @@ print STDERR "\n";
 
 ##########
 
-my ($vesselID,$vesselIDnice,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiFrameA,$multiFrameC,$multiFrameB,$multiFrameD,$multiSpecialists,$multiTitleA,$multiTitleB,$multiTitleC,$multiTitleD);
+my ($vesselID,$vesselIDnice,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiFrameA,$multiFrameC,$multiFrameB,$multiFrameD,$multiSpecialists,$multiTitleA,$multiTitleB,$multiTitleC,$multiTitleD,$haveSpareLine);
 
 ################################################################################
 format LISTALL =
@@ -87,7 +87,8 @@ $multiSpecialists
              $multiTitleA,			    $multiTitleB
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
    $multiFrameA,                          $multiFrameB
-||                                     ||                                     ||
+||                                     @|                                     || ~
+				       $haveSpareLine
 ||==========[@||||||||||||||]==========##==========[@||||||||||||||]==========|| ~
 	     $multiTitleC,			    $multiTitleD
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
@@ -162,6 +163,9 @@ foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 	if(($multiTitleC eq 'NOTES') and ($multiTitleD eq 'NOTES')) {
 		$multiTitleC = '';
 		$multiTitleD = '';
+		$haveSpareLine = '';
+	} else {
+		$haveSpareLine = '||';
 	}
 	### End Frame "hack"
 	$multiSpecialists = join ' ',sort keys %usedSpecialists;
