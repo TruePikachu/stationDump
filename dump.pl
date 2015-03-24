@@ -73,38 +73,33 @@ print STDERR "\n";
 
 ##########
 
-my ($vesselID,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiNeed,$multiOptional,$multiOutput,$multiIntermediate,$multiSpecialists);
+my ($vesselID,$vesselIDnice,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiFrameA,$multiFrameC,$multiFrameB,$multiFrameD,$multiSpecialists,$multiTitleA,$multiTitleB,$multiTitleC,$multiTitleD);
 
 ################################################################################
 format LISTALL =
-@*:
-$vesselID
-  @*
-  $stationID
-@* Ware Summary (Fully Built)
-$stationNameNice
+@|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+$stationNameNice." Ware Summary (Fully Built) (".$vesselIDnice.")"
 Specialists: ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 $multiSpecialists
 ~~           ^<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 $multiSpecialists
-..=====================================..=====================================..
-|| @|||||||||||||||||||||||||||||||||| || @|||||||||||||||||||||||||||||||||| ||
-   "INPUT",				  "OUTPUT",
-||-------------------------------------++-------------------------------------||
+..==========[@||||||||||||||]==========..==========[@||||||||||||||]==========..
+             $multiTitleA,			    $multiTitleB
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
-   $multiNeed,				  $multiOutput
-||=====================================##=====================================||
-|| @|||||||||||||||||||||||||||||||||| || @|||||||||||||||||||||||||||||||||| ||
-   "OPTIONAL",				  "INTERMEDIATE"
-||-------------------------------------++-------------------------------------||
+   $multiFrameA,                          $multiFrameB
+||                                     ||                                     ||
+||==========[@||||||||||||||]==========##==========[@||||||||||||||]==========|| ~
+	     $multiTitleC,			    $multiTitleD
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
-   $multiOptional,			  $multiIntermediate
+   $multiFrameC,                          $multiFrameD
 ''=====================================''=====================================''
 
 .
 
 format_name STDOUT "LISTALL";
 foreach $vesselID (sort keys %CVs) {
+	$vesselIDnice=$vesselID;
+	$vesselIDnice =~ s/^buildmodule_stations_(.*)_macro$/$1/;
 foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 	$stationID = $station->id;
 	$stationNameNice = $station->name;
@@ -131,14 +126,44 @@ foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 		push @intermediate,$wares{$ware}->name if $usedWares{$ware} eq 'I';
 		push @output,$wares{$ware}->name if $usedWares{$ware} eq 'P';
 	}
-	$multiNeed = join "\r",sort @need;
-	$multiOptional = join "\r",sort @optional;
-	$multiIntermediate = join "\r",sort @intermediate;
-	$multiOutput = join "\r",sort @output;
-	$multiNeed = '(none)' if $multiNeed eq '';
-	$multiOptional = '(none)' if $multiOptional eq '';
-	$multiIntermediate = '(none)' if $multiIntermediate eq '';
-	$multiOutput = '(none)' if $multiOutput eq '';
+	my $inputs = join "\r",sort @need;
+	my $outputs = join "\r",sort @output;
+	my $optionals = join "\r",sort @optional;
+	my $intermediates = join "\r",sort @intermediate;
+	### Frame "hack"
+	# Cell B will _always_ be Outputs, which always exists
+	$multiTitleB = 'OUTPUTS';
+	$multiFrameB = $outputs;
+	# Cell A will be Inputs (if they exist) or Optionals (if they don't)
+	if($inputs ne '') {
+		$multiTitleA = 'INPUTS';
+		$multiFrameA = $inputs;
+	} else {
+		$multiTitleA = 'OPTIONAL';
+		$multiFrameA = $optionals;
+	}
+	# Cell C is Notes if there are no Inputs or no Optionals; otherwise it is Optionals
+	if(($inputs eq '') or ($optionals eq '')) {
+		$multiTitleC = 'NOTES';
+		$multiFrameC = '';
+	} else {
+		$multiTitleC = 'OPTIONAL';
+		$multiFrameC = $optionals;
+	}
+	# Cell D is Intermediate if they exist, or Notes if they don't
+	if($intermediates ne '') {
+		$multiTitleD = 'INTERMEDIATE';
+		$multiFrameD = $intermediates;
+	} else {
+		$multiTitleD = 'NOTES';
+		$multiFrameD = '';
+	}
+	# Cells C and D lose their titles if they are both Notes
+	if(($multiTitleC eq 'NOTES') and ($multiTitleD eq 'NOTES')) {
+		$multiTitleC = '';
+		$multiTitleD = '';
+	}
+	### End Frame "hack"
 	$multiSpecialists = join ' ',sort keys %usedSpecialists;
 	write STDOUT;
 }
