@@ -119,18 +119,44 @@ foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 		push @intermediate,$wares{$ware}->name if $usedWares{$ware} eq 'I';
 		push @output,$wares{$ware}->name if $usedWares{$ware} eq 'P';
 	}
-	$multiFrameA = join "\r",sort @need;
-	$multiFrameB = join "\r",sort @output;
-	$multiFrameC = join "\r",sort @optional;
-	$multiFrameD = join "\r",sort @intermediate;
-	$multiFrameA = '(none)' if $multiFrameA eq '';
-	$multiFrameB = '(none)' if $multiFrameB eq '';
-	$multiFrameC = '(none)' if $multiFrameC eq '';
-	$multiFrameD = '(none)' if $multiFrameD eq '';
-	$multiTitleA = 'INPUTS';
+	my $inputs = join "\r",sort @need;
+	my $outputs = join "\r",sort @output;
+	my $optionals = join "\r",sort @optional;
+	my $intermediates = join "\r",sort @intermediate;
+	### Frame "hack"
+	# Cell B will _always_ be Outputs, which always exists
 	$multiTitleB = 'OUTPUTS';
-	$multiTitleC = 'OPTIONAL';
-	$multiTitleD = 'INTERMEDIATE';
+	$multiFrameB = $outputs;
+	# Cell A will be Inputs (if they exist) or Optionals (if they don't)
+	if($inputs ne '') {
+		$multiTitleA = 'INPUTS';
+		$multiFrameA = $inputs;
+	} else {
+		$multiTitleA = 'OPTIONAL';
+		$multiFrameA = $optionals;
+	}
+	# Cell C is Notes if there are no Inputs or no Optionals; otherwise it is Optionals
+	if(($inputs eq '') or ($optionals eq '')) {
+		$multiTitleC = 'NOTES';
+		$multiFrameC = '';
+	} else {
+		$multiTitleC = 'OPTIONAL';
+		$multiFrameC = $optionals;
+	}
+	# Cell D is Intermediate if they exist, or Notes if they don't
+	if($intermediates ne '') {
+		$multiTitleD = 'INTERMEDIATE';
+		$multiFrameD = $intermediates;
+	} else {
+		$multiTitleD = 'NOTES';
+		$multiFrameD = '';
+	}
+	# Cells C and D lose their titles if they are both Notes
+	if(($multiTitleC eq 'NOTES') and ($multiTitleD eq 'NOTES')) {
+		$multiTitleC = '';
+		$multiTitleD = '';
+	}
+	### End Frame "hack"
 	$multiSpecialists = join ' ',sort keys %usedSpecialists;
 	write STDOUT;
 }
