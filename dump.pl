@@ -73,7 +73,7 @@ print STDERR "\n";
 
 ##########
 
-my ($vesselID,$vesselIDnice,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiFrameA,$multiFrameC,$multiFrameB,$multiFrameD,$multiSpecialists,$multiTitleA,$multiTitleB,$multiTitleC,$multiTitleD,$haveSpareLine);
+my ($vesselID,$vesselIDnice,$stationID,$stationNameNice,$prodLevel,$prodModuleName,$prodTimeNice,$multiFrameA,$multiFrameC,$multiFrameB,$multiFrameD,$multiSpecialists,$multiTitleA,$multiTitleB,$multiTitleC,$multiTitleD,$haveSpareLine,$multiProduction,$multiStationCost);
 
 ################################################################################
 format LISTALL =
@@ -93,6 +93,11 @@ $multiSpecialists
 	     $multiTitleC,			    $multiTitleD
 || ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
    $multiFrameC,                          $multiFrameD
+||                                     ||                                     ||
+||==========[@||||||||||||||]==========##==========[@||||||||||||||]==========||
+	     "PRODUCTIONS",                         "STATION COST"
+|| ^|||||||||||||||||||||||||||||||||| || ^|||||||||||||||||||||||||||||||||| || ~~
+   $multiProduction,			  $multiStationCost
 ''=====================================''=====================================''
 
 .
@@ -169,6 +174,9 @@ foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 	}
 	### End Frame "hack"
 	$multiSpecialists = join ' ',sort keys %usedSpecialists;
+
+	$multiProduction = 'TODO';
+	$multiStationCost = 'TODO';
 	write STDOUT;
 }
 }
