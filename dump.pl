@@ -23,6 +23,7 @@ print STDERR "\nLoading string table...";
 XStringTable::init();
 print STDERR "\nLoading wares...";
 my %wares;
+my %stationPartNames;
 foreach my $wareRef (@{Ware::refList()}) {
 	# TODO Reduce these matches
 	# Don't want to regex golf for anything
@@ -31,11 +32,13 @@ foreach my $wareRef (@{Ware::refList()}) {
 	next if $wareRef->{id} =~ /^inv_/;
 	next if $wareRef->{id} =~ /^shp_/;
 	next if $wareRef->{id} =~ /^spe_/;
-	next if $wareRef->{id} =~ /^stp_/;
 	next if $wareRef->{id} =~ /^ecotest_/;
 	next if $wareRef->{id} =~ /^upg_/;
 	my $newWare = new Ware($wareRef);
 	$wares{$newWare->id} = $newWare;
+	if ($wareRef->{id} =~ /^stp/) { # STation Part
+		$stationPartNames{$wareRef->{component}->{ref}}=$newWare->id;
+	}
 }
 
 print STDERR "\nLoading production modules...";
