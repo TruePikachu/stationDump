@@ -9,7 +9,7 @@ use XML::Simple qw(:strict);
 sub new {
 	my ($class,$path) = @_;
 	my $ref = XMLin(CatDatDB::read($path),
-		ForceArray	=> [qw /connection/],
+		ForceArray	=> [qw /connection component/],
 		KeyAttr		=> {}
 	);
 	my $self = {
@@ -20,10 +20,19 @@ sub new {
 	my @normModules;
 	foreach my $connection (@{$ref->{macro}->{connections}->{connection}}) {
 		next unless defined $connection->{macro};
-		next unless defined $connection->{macro}->{ref};
 		my %nmodule;
 		$nmodule{name}=$connection->{ref};
-		$nmodule{macro}=$connection->{macro}->{ref};
+		my @macros;
+		if (defined $connection->{macro}->{ref}) {
+			push @macros, {	name		=> $connection->{macro}->{ref},
+					connection	=> $connection->{macro}->{connection}};
+		} else {
+			foreach my $component (@{$connection->{macro}->{component}}) {
+			push @macros, {	name		=> $component->{ref},
+					connection	=> $component->{connection}};
+			}
+		}
+		$nmodule{macro}=\@macros;
 		$nmodule{connection}=$connection->{macro}->{connection};
 		if(defined $connection->{build}) {
 			$nmodule{build}=$connection->{build}->{sequence} . '-' . $connection->{build}->{stage};
@@ -31,6 +40,7 @@ sub new {
 			$nmodule{build} = 'N/A';
 		}
 		push @normModules, \%nmodule;
+		next unless defined $connection->{macro}->{ref};
 		next unless ($connection->{macro}->{ref} =~ /struct_econ_prod_.*_macro/);
 		my %pmodule;
 		$pmodule{macro}=$connection->{macro}->{ref};
@@ -71,12 +81,14 @@ sub getTotalBuildCost {
 	my ($self,$nameRef,$wareRef) = @_;
 	my %result;
 	foreach my $module (@{$self->{normModules}}) {
-		next unless defined $nameRef->{$module->{macro}};
-		my $partWare = $wareRef->{$nameRef->{$module->{macro}}};
-		my $partInputs = $partWare->productions->{default}->{inputs};
-		foreach my $input (keys %{$partInputs}) {
-			$result{$input}=0 unless defined $result{$input};
-			$result{$input}+=$partInputs->{$input};
+		foreach my $macro (@{$module->{macro}}) {
+			next unless defined $nameRef->{$macro->{name}};
+			my $partWare = $wareRef->{$nameRef->{$macro->{name}}};
+			my $partInputs = $partWare->productions->{default}->{inputs};
+			foreach my $input (keys %{$partInputs}) {
+				$result{$input}=0 unless defined $result{$input};
+				$result{$input}+=$partInputs->{$input};
+			}
 		}
 	}
 	return \%result;
