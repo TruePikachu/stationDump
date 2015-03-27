@@ -17,20 +17,32 @@ sub new {
 		name	=> XStringTable::expand($ref->{macro}->{properties}->{identification}->{name}),
 	};
 	my @prodModules;
+	my @normModules;
 	foreach my $connection (@{$ref->{macro}->{connections}->{connection}}) {
 		next unless defined $connection->{macro};
 		next unless defined $connection->{macro}->{ref};
-		next unless ($connection->{macro}->{ref} =~ /struct_econ_prod_.*_macro/);
-		my %module;
-		$module{macro}=$connection->{macro}->{ref};
+		my %nmodule;
+		$nmodule{name}=$connection->{ref};
+		$nmodule{macro}=$connection->{macro}->{ref};
+		$nmodule{connection}=$connection->{macro}->{connection};
 		if(defined $connection->{build}) {
-			$module{build}=$connection->{build}->{sequence} . '-' . $connection->{build}->{stage};
+			$nmodule{build}=$connection->{build}->{sequence} . '-' . $connection->{build}->{stage};
 		} else {
-			$module{build} = 'N/A';
+			$nmodule{build} = 'N/A';
 		}
-		push @prodModules, \%module;
+		push @normModules, \%nmodule;
+		next unless ($connection->{macro}->{ref} =~ /struct_econ_prod_.*_macro/);
+		my %pmodule;
+		$pmodule{macro}=$connection->{macro}->{ref};
+		if(defined $connection->{build}) {
+			$pmodule{build}=$connection->{build}->{sequence} . '-' . $connection->{build}->{stage};
+		} else {
+			$pmodule{build} = 'N/A';
+		}
+		push @prodModules, \%pmodule;
 	}
 	$self->{prodModuleNames} = \@prodModules;
+	$self->{normModules} = \@normModules;
 	bless $self,$class;
 	return $self;
 }
@@ -50,4 +62,8 @@ sub prodModuleNames {
 	return $self->{prodModuleNames};
 }
 
+sub normModules {
+	my ($self) = @_;
+	return $self->{normModules};
+}
 1;
