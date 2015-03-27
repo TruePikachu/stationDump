@@ -66,4 +66,20 @@ sub normModules {
 	my ($self) = @_;
 	return $self->{normModules};
 }
+
+sub getTotalBuildCost {
+	my ($self,$nameRef,$wareRef) = @_;
+	my %result;
+	foreach my $module (@{$self->{normModules}}) {
+		next unless defined $nameRef->{$module->{macro}};
+		my $partWare = $wareRef->{$nameRef->{$module->{macro}}};
+		my $partInputs = $partWare->productions->{default}->{inputs};
+		foreach my $input (keys %{$partInputs}) {
+			$result{$input}=0 unless defined $result{$input};
+			$result{$input}+=$partInputs->{$input};
+		}
+	}
+	return \%result;
+}
+
 1;
