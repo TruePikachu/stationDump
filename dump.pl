@@ -28,7 +28,8 @@ foreach my $wareRef (@{Ware::refList()}) {
 	# TODO Reduce these matches
 	# Don't want to regex golf for anything
 	next unless defined $wareRef->{tags};
-	next unless $wareRef->{tags} =~ /economy/;
+	next unless $wareRef->{tags} =~ /economy/ or
+		    $wareRef->{id} =~ /^stp_/;
 	next if $wareRef->{id} =~ /^inv_/;
 	next if $wareRef->{id} =~ /^shp_/;
 	next if $wareRef->{id} =~ /^spe_/;
@@ -36,7 +37,7 @@ foreach my $wareRef (@{Ware::refList()}) {
 	next if $wareRef->{id} =~ /^upg_/;
 	my $newWare = new Ware($wareRef);
 	$wares{$newWare->id} = $newWare;
-	if ($wareRef->{id} =~ /^stp/) { # STation Part
+	if ($wareRef->{id} =~ /^stp_/) { # STation Part
 		$stationPartNames{$wareRef->{component}->{ref}}=$newWare->id;
 	}
 }
@@ -179,7 +180,16 @@ foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 	$multiSpecialists = join ' ',sort keys %usedSpecialists;
 
 	$multiProduction = 'TODO';
-	$multiStationCost = 'TODO';
+
+	{ # Station cost
+		$multiStationCost = '';
+		my $cost = $station->getTotalBuildCost(\%stationPartNames,\%wares);
+		foreach my $what (sort {$cost->{$b} <=> $cost->{$a}} keys %{$cost}) {
+			$multiStationCost .= $cost->{$what} . "x ";
+			$multiStationCost .= $wares{$what}->name . "\r";
+		}
+		chomp $multiStationCost;
+	}
 	write STDOUT;
 }
 }
