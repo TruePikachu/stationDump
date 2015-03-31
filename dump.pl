@@ -115,11 +115,25 @@ foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 	$stationNameNice = $station->name;
 	my %usedWares; # Need Optional Intermediate Produce
 	my %usedSpecialists;
+	my %resourceRatePerHour;
 	foreach my $prodModule (@{$station->prodModuleNames}) {
 		my $refProd = $prodModules{$prodModule->{macro}};
 		next unless defined $refProd;
 		foreach my $prodWare (keys %{$refProd->methods}) {
 			my $refWareMaker = $wares{$prodWare}->productions->{$refProd->methods->{$prodWare}};
+			my $timeScalar = 3600 / $refWareMaker->{time};
+			foreach my $ware (keys %{$refWareMaker->{what}}) {
+				$resourceRatePerHour{$ware}=0 unless defined $resourceRatePerHour{$ware};
+				$resourceRatePerHour{$ware} += $timeScalar * $refWareMaker->{what}->{$ware};
+			}
+			foreach my $ware (keys %{$refWareMaker->{inputs}}) {
+				$resourceRatePerHour{$ware}=0 unless defined $resourceRatePerHour{$ware};
+				$resourceRatePerHour{$ware} -= $timeScalar * $refWareMaker->{inputs}->{$ware};
+			}
+			foreach my $ware (keys %{$refWareMaker->{secondary}}) {
+				$resourceRatePerHour{$ware}=0 unless defined $resourceRatePerHour{$ware};
+				$resourceRatePerHour{$ware} -= $timeScalar * $refWareMaker->{secondary}->{$ware};
+			}
 			markAll('P',$refWareMaker->{what},\%usedWares);
 			markAll('N',$refWareMaker->{inputs},\%usedWares);
 			markAll('O',$refWareMaker->{secondary},\%usedWares);
@@ -131,10 +145,10 @@ foreach my $station (sort { $a->name cmp $b->name } @{$CVs{$vesselID}}) {
 	next unless scalar keys %usedWares;
 	my (@need,@optional,@intermediate,@output);
 	foreach my $ware (sort keys %usedWares) {
-		push @need,$wares{$ware}->name if $usedWares{$ware} eq 'N';
-		push @optional,$wares{$ware}->name if $usedWares{$ware} eq 'O';
-		push @intermediate,$wares{$ware}->name if $usedWares{$ware} eq 'I';
-		push @output,$wares{$ware}->name if $usedWares{$ware} eq 'P';
+		push @need,$wares{$ware}->name . ' (' . $resourceRatePerHour{$ware} . '/h)' if $usedWares{$ware} eq 'N';
+		push @optional,$wares{$ware}->name . ' (' . $resourceRatePerHour{$ware} . '/h)' if $usedWares{$ware} eq 'O';
+		push @intermediate,$wares{$ware}->name . ' (' . $resourceRatePerHour{$ware} . '/h)' if $usedWares{$ware} eq 'I';
+		push @output,$wares{$ware}->name . ' (' . $resourceRatePerHour{$ware} . '/h)' if $usedWares{$ware} eq 'P';
 	}
 	my $inputs = join "\r",sort @need;
 	my $outputs = join "\r",sort @output;
