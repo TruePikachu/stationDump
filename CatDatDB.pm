@@ -55,4 +55,9 @@ sub find {
 	return sort @result;
 }
 
+sub info {
+	my $name = shift;
+	return "name=\"$fileInfo{$name}->{name}\" size=$fileInfo{$name}->{size} date=$fileInfo{$name}->{size} hash=$fileInfo{$name}->{hash} at $fileInfo{$name}->{file}+$fileInfo{$name}->{seek}";
+}
+
 1;

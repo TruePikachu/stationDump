@@ -8,10 +8,20 @@ our %table;	# {page}->{entry} = string
 sub init {
 	my $langsrc = shift;
 	$langsrc='t/0001-L044.xml' unless defined $langsrc;
-	my $ref = XMLin(CatDatDB::read($langsrc),
-		ForceArray	=> [qw /page t/],
-		KeyAttr		=> {page => '+id',
-				    t	 => '+id'});
+	my $ref;
+	eval {
+		$ref = XMLin(CatDatDB::read($langsrc),
+			ForceArray	=> [qw /page t/],
+			KeyAttr		=> {page => '+id',
+					    t	 => '+id'});
+		1;
+	} or do {
+		my $e = $@;
+		print "XStringTable::init: XML Parse Error:\n$e\n";
+		print "File information (from CatDatDB):\n";
+		print CatDatDB::info($langsrc),"\n";
+		die;
+	};
 	foreach my $pageNum (keys %{$ref->{page}}) {
 		my $pageRef = $ref->{page}->{$pageNum};
 		my %page;
