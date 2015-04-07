@@ -40,9 +40,9 @@ sub read {
 	my $name = shift;
 	die "File $name not found" unless defined $fileInfo{$name};
 	my $handle = $datHandle{$fileInfo{$name}->{file}};
-	seek($handle,$fileInfo{$name}->{seek},0);
+	sysseek($handle,$fileInfo{$name}->{seek},0);
 	my $data;
-	read($handle,$data,$fileInfo{$name}->{size});
+	sysread($handle,$data,$fileInfo{$name}->{size});
 	return $data;
 }
 
